@@ -4,6 +4,7 @@ var createRouter = function(port){
 	var api = {};
 	var routes = {};
 	var methods = ['GET', 'POST'];
+	var interceptors = [];
 
 	methods.forEach(function(method){
 		routes[method] = {};
@@ -12,9 +13,24 @@ var createRouter = function(port){
 		};
 	});
 
+	api.interceptor = function(interceptor){
+		interceptors.push(interceptor);
+	};
+
+	var executeInterceptors = function(number, req, res){
+		var interceptor = interceptors[number];
+		if(!interceptor) return;
+		interceptor(req, res, function(){
+			executeInterceptors(++number, req, res);
+		});
+	};
+
 	http.createServer(function(req, res){
-		res.setHeader('Access-Control-Allow-Origin', '*');
-		if(!routes[req.method][req.url]) return res.end();
+		executeInterceptors(0, req, res);
+		if(!routes[req.method][req.url]) {
+			res.statusCode = 404;
+			return res.end();
+		}
 		routes[req.method][req.url](req, res);
 	}).listen(port);
 
